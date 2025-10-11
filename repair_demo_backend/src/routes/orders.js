@@ -8,5 +8,6 @@ router.get('/:id', ctrl.detail);
 router.put('/:id/assign', ctrl.assign);
 router.put('/:id/status', ctrl.updateStatus);
 router.delete('/:id', ctrl.remove);
+router.post('/:id/checkin', ctrl.checkin);
 
 module.exports = router;

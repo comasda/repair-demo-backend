@@ -27,6 +27,7 @@ app.use((req, res, next) => {
 })
 
 app.use(errorHandler);
+app.use(express.json());
 
 connectDB(MONGO_URI).then(() => {
   app.listen(PORT, () => {

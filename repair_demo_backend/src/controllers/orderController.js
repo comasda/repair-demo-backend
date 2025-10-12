@@ -230,3 +230,35 @@ exports.addReview = async (req, res, next) => {
     next(err)
   }
 }
+
+exports.getReview = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { technicianId } = req.query || {}
+
+    const order = await Order.findById(id)
+    if (!order) return res.status(404).json({ message: '工单不存在' })
+
+    // 权限：仅该工单的师傅可查看
+    if (technicianId && order.technicianId !== technicianId) {
+      return res.status(403).json({ message: '仅该工单的师傅可查看评价' })
+    }
+
+    // 无评价
+    if (!order.reviews || order.reviews.length === 0) {
+      return res.json({ reviews: [] })
+    }
+
+    res.json({
+      reviews: order.reviews.map(r => ({
+        time: r.time,
+        rating: r.rating,
+        content: r.content,
+        images: r.images || [],
+        customerName: r.customerName || '用户',
+      }))
+    })
+  } catch (err) {
+    next(err)
+  }
+}

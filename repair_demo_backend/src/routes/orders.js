@@ -10,5 +10,6 @@ router.put('/:id/status', ctrl.updateStatus);
 router.delete('/:id', ctrl.remove);
 router.post('/:id/checkin', ctrl.checkin);
 router.post('/:id/reviews', ctrl.addReview);
+router.get('/:id/review', ctrl.getReview);
 
 module.exports = router;

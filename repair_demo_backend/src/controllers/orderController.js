@@ -1,6 +1,6 @@
 const Order = require('../models/Order');
 
-const statusMap = { pending: '待接单', assigned: '已接单', done: '已完成' };
+const statusMap = { pending: '待接单', assigned: '待签到', checkedIn: '已签到', done: '已完成' };
 const CHECKIN_RADIUS_M = Number(process.env.CHECKIN_RADIUS_M || 200)
 exports.list = async (req, res, next) => {
   try {
@@ -58,7 +58,6 @@ exports.create = async (req, res, next) => {
       history: [{ time, note: '客户发起报修' }]
     });
     // 返回中文状态
-    const statusMap = { pending: '待接单', assigned: '已接单', done: '已完成' }
     const o = order.toObject()
     o.statusText = statusMap[o.status] || o.status
     res.json(o);
@@ -72,7 +71,6 @@ exports.detail = async (req, res, next) => {
     const { id } = req.params;
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: '工单不存在' });
-    const statusMap = { pending: '待接单', assigned: '已接单', done: '已完成' }
     const o = order.toObject()
     o.statusText = statusMap[o.status] || o.status
     res.json(o)
@@ -107,13 +105,13 @@ exports.updateStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, note } = req.body;
-    if (!['pending','assigned','done'].includes(status)) {
+    if (!['pending','assigned','checkedIn','done'].includes(status)) {
       return res.status(400).json({ message: '非法状态值' });
     }
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: '工单不存在' });
     order.status = status;
-    order.history.push({ time: new Date().toISOString().slice(0,16).replace('T',' '), note: note || `状态更新为 ${status}` });
+    order.history.push({ time: new Date().toISOString().slice(0,16).replace('T',' '), note: note || `状态更新为 ${statusMap[status] || status}` });
     await order.save();
     res.json(order);
   } catch (err) {
@@ -165,6 +163,8 @@ exports.checkin = async (req, res, next) => {
     if (dist > CHECKIN_RADIUS_M) {
       return res.status(400).json({ message: `距工单位置约${dist}米，需在${CHECKIN_RADIUS_M}米内签到` })
     }
+    
+    const willSetStatus = (order.status !== 'done') ? { status: 'checkedIn' } : {}
 
     const now = new Date()
     const pad = n => (n < 10 ? '0' + n : '' + n)
@@ -173,6 +173,7 @@ exports.checkin = async (req, res, next) => {
     const updated = await Order.findByIdAndUpdate(
       id,
       {
+        ...willSetStatus,
         $push: {
           checkins: { time, lat, lng, technicianId, technicianName },
           history:  { time, note: `师傅签到（${technicianName}）` }

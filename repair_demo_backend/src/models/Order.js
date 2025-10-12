@@ -38,7 +38,7 @@ const orderSchema = new mongoose.Schema({
   },
   locationAddress: { type: String, default: '' }, // chooseLocation 的可读地址（可选）
   time: { type: String, required: true },           // 创建时间
-  status: { type: String, enum: ['pending','assigned','checkedIn', 'done'], default: 'pending' },
+   status: { type: String, enum: ['pending','assigned','checkedIn','awaitingConfirm','done'], default: 'pending' },
   technicianId: { type: String, default: null },
   technicianName: { type: String, default: null },
   history: { type: [historySchema], default: [] },

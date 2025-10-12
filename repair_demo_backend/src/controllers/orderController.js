@@ -1,7 +1,9 @@
 const Order = require('../models/Order');
 
-const statusMap = { pending: '待接单', assigned: '待签到', checkedIn: '已签到', done: '已完成' };
+const statusMap = { pending: '待接单', assigned: '待签到', checkedIn: '已签到', awaitingConfirm: '待客户确认', done: '已完成' };
 const CHECKIN_RADIUS_M = Number(process.env.CHECKIN_RADIUS_M || 200)
+const fmt = (d=new Date()) => { const p=n=>n<10?'0'+n:''+n; return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}` }
+
 exports.list = async (req, res, next) => {
   try {
     const { customerId, technicianId, status } = req.query
@@ -105,11 +107,18 @@ exports.updateStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, note } = req.body;
-    if (!['pending','assigned','checkedIn','done'].includes(status)) {
+    if (!['pending','assigned','checkedIn','awaitingConfirm','done'].includes(status)) {
       return res.status(400).json({ message: '非法状态值' });
     }
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: '工单不存在' });
+   // 收紧直改：禁止绕过流程直接 done，禁止越级写 awaitingConfirm
+    if (status === 'done') {
+      return res.status(400).json({ message: '请使用 /complete-confirm 完成用户确认流程' });
+    }
+    if (status === 'awaitingConfirm') {
+      return res.status(400).json({ message: '请使用 /complete-request 发起完成确认' });
+    }
     order.status = status;
     order.history.push({ time: new Date().toISOString().slice(0,16).replace('T',' '), note: note || `状态更新为 ${statusMap[status] || status}` });
     await order.save();
@@ -166,9 +175,7 @@ exports.checkin = async (req, res, next) => {
     
     const willSetStatus = (order.status !== 'done') ? { status: 'checkedIn' } : {}
 
-    const now = new Date()
-    const pad = n => (n < 10 ? '0' + n : '' + n)
-    const time = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+    const time = fmt(new Date())
 
     const updated = await Order.findByIdAndUpdate(
       id,
@@ -261,4 +268,60 @@ exports.getReview = async (req, res, next) => {
   } catch (err) {
     next(err)
   }
+}
+
+// ===== 师傅发起完成请求（需已签到）=====
+exports.requestComplete = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { technicianId } = req.body || {}
+    if (!technicianId) return res.status(400).json({ message: '缺少参数: technicianId' })
+
+    const order = await Order.findById(id)
+    if (!order) return res.status(404).json({ message: '工单不存在' })
+    if (order.technicianId !== technicianId) {
+      return res.status(403).json({ message: '仅接单的师傅可发起完成' })
+    }
+    if (order.status !== 'checkedIn') {
+      return res.status(400).json({ message: '需到场签到后才能发起完成' })
+    }
+
+    const time = fmt(new Date())
+    order.status = 'awaitingConfirm'
+    order.completeFlow = Object.assign({}, order.completeFlow, {
+      requestAt: time,
+      requestedBy: technicianId
+    })
+    order.history.push({ time, note: '师傅发起完成，等待客户确认' })
+    await order.save()
+    res.json({ message: '已发起完成确认', status: order.status })
+  } catch (err) { next(err) }
+}
+
+// ===== 客户确认完成（需待确认状态）=====
+exports.confirmComplete = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { customerId } = req.body || {}
+    if (!customerId) return res.status(400).json({ message: '缺少参数: customerId' })
+
+    const order = await Order.findById(id)
+    if (!order) return res.status(404).json({ message: '工单不存在' })
+    if (order.customerId !== customerId) {
+      return res.status(403).json({ message: '仅下单客户可确认完成' })
+    }
+    if (order.status !== 'awaitingConfirm') {
+      return res.status(400).json({ message: '当前状态不可确认完成' })
+    }
+
+    const time = fmt(new Date())
+    order.status = 'done'
+    order.completeFlow = Object.assign({}, order.completeFlow, {
+      confirmAt: time,
+      confirmedBy: customerId
+    })
+    order.history.push({ time, note: '客户确认完成' })
+    await order.save()
+    res.json({ message: '订单已完成', status: order.status })
+  } catch (err) { next(err) }
 }

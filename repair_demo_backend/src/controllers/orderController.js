@@ -4,7 +4,7 @@ const statusMap = { pending: '待接单', assigned: '已接单', done: '已完�
 const CHECKIN_RADIUS_M = Number(process.env.CHECKIN_RADIUS_M || 200)
 exports.list = async (req, res, next) => {
   try {
-    const { customerId, technicianId } = req.query
+    const { customerId, technicianId, status } = req.query
 
     let filter = {}
     if (customerId) {
@@ -13,6 +13,7 @@ exports.list = async (req, res, next) => {
     if (technicianId) {
       filter.technicianId = technicianId   // 师傅看分配给自己的工单
     }
+    if (status) filter.status = status
 
     const items = await Order.find(filter).sort({ createdAt: -1 });
 
@@ -181,4 +182,50 @@ exports.checkin = async (req, res, next) => {
     )
     res.json(updated)
   } catch (e) { next(e) }
+}
+
+exports.addReview = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { customerId, customerName, rating, content, images } = req.body || {}
+
+    // 1) 基础校验
+    if (!customerId || !rating) {
+      return res.status(400).json({ message: '缺少必要字段: customerId, rating' })
+    }
+    const r = Number(rating)
+    if (Number.isNaN(r) || r < 1 || r > 5) {
+      return res.status(400).json({ message: '评分须为 1~5 的数字' })
+    }
+
+    // 2) 订单校验：存在性、归属、状态
+    const order = await Order.findById(id)
+    if (!order) return res.status(404).json({ message: '工单不存在' })
+    if (order.customerId !== customerId) {
+      return res.status(403).json({ message: '仅该订单的客户可评价' })
+    }
+    if (order.status !== 'done') {
+      return res.status(400).json({ message: '订单未完成，无法评价' })
+    }
+
+    // 3) 生成时间、写入评论 + 留痕
+    const now = new Date()
+    const pad = n => (n < 10 ? '0' + n : '' + n)
+    const time = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+
+    await Order.findByIdAndUpdate(
+      id,
+      {
+        $push: {
+          reviews: { time, customerId, customerName: customerName || order.customer, rating: r, content: content || '', images: images || [] },
+          history: { time, note: `客户追加评价（${r}星）` }
+        }
+      },
+      { new: true }
+    )
+
+    res.json({ message: '评价成功' })
+  } catch (err) {
+    next(err)
+  }
 }

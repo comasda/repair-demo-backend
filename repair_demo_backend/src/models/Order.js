@@ -14,6 +14,15 @@ const checkinSchema = new mongoose.Schema({
   technicianName: { type: String, required: true },
 }, { _id: false });
 
+const reviewSchema = new mongoose.Schema({
+  time: { type: String, required: true },
+  customerId: { type: String, required: true },
+  customerName: { type: String, default: '' },
+  rating: { type: Number, min: 1, max: 5, required: true },
+  content: { type: String, default: '' },
+  images: { type: [String], default: [] }
+}, { _id: false });
+
 const orderSchema = new mongoose.Schema({
   id: { type: String }, // 工单编号
   customer: { type: String, required: true },       // 客户名（或手机号）
@@ -34,6 +43,7 @@ const orderSchema = new mongoose.Schema({
   technicianName: { type: String, default: null },
   history: { type: [historySchema], default: [] },
   checkins: { type: [checkinSchema], default: [] },
+  reviews: { type: [reviewSchema], default: [] },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

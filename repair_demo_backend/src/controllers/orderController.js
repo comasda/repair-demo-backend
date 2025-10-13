@@ -1,6 +1,6 @@
 const Order = require('../models/Order');
 
-const statusMap = { pending: '待接单', assigned: '待签到', checkedIn: '已签到', awaitingConfirm: '待客户确认', done: '已完成' };
+const statusMap = { pending: '待接单', offered: '待接收', assigned: '待签到', checkedIn: '已签到', awaitingConfirm: '待客户确认', done: '已完成' };
 const CHECKIN_RADIUS_M = Number(process.env.CHECKIN_RADIUS_M || 200)
 const fmt = (d=new Date()) => { const p=n=>n<10?'0'+n:''+n; return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}` }
 
@@ -81,28 +81,28 @@ exports.detail = async (req, res, next) => {
   }
 };
 
-exports.assign = async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const { technicianId, technicianName } = req.body
+// exports.assign = async (req, res, next) => {
+//   try {
+//     const { id } = req.params
+//     const { technicianId, technicianName } = req.body
 
-    const order = await Order.findByIdAndUpdate(
-      id,
-      {
-        technicianId,
-        technicianName,
-        status: 'assigned',
-        $push: { history: { time: new Date().toISOString(), note: `已指派给 ${technicianName}` } }
-      },
-      { new: true }
-    )
+//     const order = await Order.findByIdAndUpdate(
+//       id,
+//       {
+//         technicianId,
+//         technicianName,
+//         status: 'assigned',
+//         $push: { history: { time: new Date().toISOString(), note: `已指派给 ${technicianName}` } }
+//       },
+//       { new: true }
+//     )
 
-    if (!order) return res.status(404).json({ message: '订单不存在' })
-    res.json(order)
-  } catch (err) {
-    next(err)
-  }
-}
+//     if (!order) return res.status(404).json({ message: '订单不存在' })
+//     res.json(order)
+//   } catch (err) {
+//     next(err)
+//   }
+// }
 exports.updateStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -323,5 +323,81 @@ exports.confirmComplete = async (req, res, next) => {
     order.history.push({ time, note: '客户确认完成' })
     await order.save()
     res.json({ message: '订单已完成', status: order.status })
+  } catch (err) { next(err) }
+}
+
+// ===== 新增：管理员指派（offered）=====
+// POST /orders/:id/offer  body: { technicianId, technicianName, adminId?, adminName? }
+exports.offer = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { technicianId, technicianName, adminId, adminName } = req.body || {}
+    if (!technicianId || !technicianName) {
+      return res.status(400).json({ message: '缺少参数: technicianId, technicianName' })
+    }
+    const order = await Order.findById(id)
+    if (!order) return res.status(404).json({ message: '订单不存在' })
+    if (!['pending','offered'].includes(order.status)) {
+      return res.status(400).json({ message: '当前状态不可指派' })
+    }
+    const time = fmt()
+    order.status = 'offered'
+    order.technicianId = technicianId
+    order.technicianName = technicianName
+    order.offerFlow = Object.assign({}, order.offerFlow, {
+      offeredAt: time,
+      offeredBy: adminName || adminId || ''
+    })
+    order.history.push({ time, note: `管理员指派给 ${technicianName}（待接收）` })
+    await order.save()
+    const o = order.toObject(); o.statusText = statusMap[o.status] || o.status
+    res.json(o)
+  } catch (err) { next(err) }
+}
+
+// ===== 新增：师傅接受指派 → assigned（待签到）=====
+// POST /orders/:id/accept  body: { technicianId }
+exports.acceptOffer = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { technicianId } = req.body || {}
+    if (!technicianId) return res.status(400).json({ message: '缺少参数: technicianId' })
+    const order = await Order.findById(id)
+    if (!order) return res.status(404).json({ message: '订单不存在' })
+    if (order.status !== 'offered' || order.technicianId !== technicianId) {
+      return res.status(400).json({ message: '当前不可接受该指派' })
+    }
+    const time = fmt()
+    order.status = 'assigned'
+    order.offerFlow = Object.assign({}, order.offerFlow, { acceptedAt: time })
+    order.history.push({ time, note: '师傅已接受指派' })
+    await order.save()
+    const o = order.toObject(); o.statusText = statusMap[o.status] || o.status
+    res.json(o)
+  } catch (err) { next(err) }
+}
+
+// ===== 新增：师傅拒绝指派 → 回到 pending（清空技师）=====
+// POST /orders/:id/decline  body: { technicianId, note? }
+exports.declineOffer = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { technicianId, note } = req.body || {}
+    if (!technicianId) return res.status(400).json({ message: '缺少参数: technicianId' })
+    const order = await Order.findById(id)
+    if (!order) return res.status(404).json({ message: '订单不存在' })
+    if (order.status !== 'offered' || order.technicianId !== technicianId) {
+      return res.status(400).json({ message: '当前不可拒绝该指派' })
+    }
+    const time = fmt()
+    order.status = 'pending'
+    order.offerFlow = Object.assign({}, order.offerFlow, { declinedAt: time, declineNote: note || '' })
+    order.history.push({ time, note: `师傅拒绝指派${note ? '：'+note : ''}` })
+    // 清空当前技师，便于管理员重新指派
+    order.technicianId = null
+    order.technicianName = null
+    await order.save()
+    const o = order.toObject(); o.statusText = statusMap[o.status] || o.status
+    res.json(o)
   } catch (err) { next(err) }
 }

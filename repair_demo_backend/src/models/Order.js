@@ -36,14 +36,22 @@ const orderSchema = new mongoose.Schema({
     lat: { type: Number }, // 客户未授权时可为空
     lng: { type: Number }
   },
-  locationAddress: { type: String, default: '' }, // chooseLocation 的可读地址（可选）
+  locationAddress: { type: String, default: '' }, // chooseLocation 的可读地址
   time: { type: String, required: true },           // 创建时间
-   status: { type: String, enum: ['pending','assigned','checkedIn','awaitingConfirm','done'], default: 'pending' },
+  status: { type: String, enum: ['pending','offered','assigned','checkedIn','awaitingConfirm','done'], default: 'pending' },
   technicianId: { type: String, default: null },
   technicianName: { type: String, default: null },
   history: { type: [historySchema], default: [] },
   checkins: { type: [checkinSchema], default: [] },
   reviews: { type: [reviewSchema], default: [] },
+  // 指派-接受-拒绝的审计痕迹
+  offerFlow: {
+    offeredAt:   { type: String, default: '' },  // 管理员指派时间
+    offeredBy:   { type: String, default: '' },  // 管理员ID/名字（可空）
+    acceptedAt:  { type: String, default: '' },  // 师傅接受时间
+    declinedAt:  { type: String, default: '' },  // 师傅拒绝时间
+    declineNote: { type: String, default: '' }   // 拒绝原因
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

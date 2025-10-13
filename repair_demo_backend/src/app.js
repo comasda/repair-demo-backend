@@ -6,6 +6,8 @@ const users = require('./routes/users');
 const orders = require('./routes/orders');
 const technicians = require('./routes/technicians');
 const { errorHandler } = require('./middleware/error');
+const { verifyJWT, requireRole } = require('./middleware/auth');
+const admin = require('./routes/admin');
 
 const app = express();
 
@@ -21,6 +23,9 @@ app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISO
 app.use('/api/users', users);
 app.use('/api/orders', orders);
 app.use('/api/technicians', technicians);
+
+// 管理端受保护路由
+app.use('/api/admin', verifyJWT, requireRole('admin'), admin);
 app.use((req, res, next) => {
   console.log(`[请求] ${req.method} ${req.url}`, req.body || {})
   next()

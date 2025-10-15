@@ -58,8 +58,10 @@ exports.create = async ({
   return o;
 };
 
-exports.listForCustomer = async (customerId) => {
-  return Order.find({ customerId }).sort({ createdAt: -1 }).lean();
+exports.listForCustomer = async (customerId, status) => {
+  const q = { customerId };
+  if (status) q.status = status;             // 单状态过滤（前端会做多状态合并）
+  return Order.find(q).sort({ createdAt: -1 }).lean();
 };
 
 // 详情（权限安全版：仅相关人/管理员）

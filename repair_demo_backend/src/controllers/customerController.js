@@ -9,7 +9,8 @@ exports.create = async (req,res,next)=>{
 
 exports.listMine = async (req,res,next)=>{
   try {
-    const list = await customerService.listForCustomer(req.user.sub);
+    const { status } = req.query || {};
+    const list = await customerService.listForCustomer(req.user.sub, status);
     res.json(list);
   } catch(e){ next(e); }
 };

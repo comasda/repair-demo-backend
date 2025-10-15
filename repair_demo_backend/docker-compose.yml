@@ -2,22 +2,27 @@ version: '3.9'
 services:
   mongo:
     image: mongo:7
+    environment:
+      - TZ=Asia/Shanghai
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+      - /etc/localtime:/etc/localtime:ro
 
   api:
     build: .
     restart: unless-stopped
     volumes:
       - ./src:/app/src
+      - /etc/localtime:/etc/localtime:ro
     command: npx nodemon src/app.js
     environment:
       - PORT=8080
       - MONGO_URI=mongodb://mongo:27017/repair_demo
       - CORS_ORIGINS=*
+      - TZ=Asia/Shanghai
     ports:
       - "8080:8080"
     depends_on:

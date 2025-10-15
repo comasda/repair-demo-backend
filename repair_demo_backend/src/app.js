@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { connectDB } = require('./../src/db');
 const users = require('./routes/users');
-const orders = require('./routes/orders');
+const customer = require('./routes/customer');
 const technicians = require('./routes/technicians');
 const { errorHandler } = require('./middleware/error');
 const { verifyJWT, requireRole } = require('./middleware/auth');
@@ -21,7 +21,7 @@ app.use(express.json());
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 app.use('/api/users', users);
-app.use('/api/orders', orders);
+app.use('/api/customer', customer);
 app.use('/api/technicians', technicians);
 
 // 管理端受保护路由
@@ -32,7 +32,6 @@ app.use((req, res, next) => {
 })
 
 app.use(errorHandler);
-app.use(express.json());
 
 connectDB(MONGO_URI).then(() => {
   app.listen(PORT, () => {

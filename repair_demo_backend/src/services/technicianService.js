@@ -37,14 +37,11 @@ function haversine(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// 师傅“我的工单”（只看被指派/处理中）
-exports.listForTechnician = async (techId) => {
-  return Order.find({
-    technicianId: techId,
-    status: { $in: ['offered', 'assigned', 'checkedIn', 'awaitingConfirm', 'done'] },
-  })
-    .sort({ createdAt: -1 })
-    .lean();
+// 师傅工单列表
+exports.listForTechnician = async (technicianId, status) => {
+  const q = {technicianId};
+  if (status) q.status = status;             // 单状态过滤（前端会做多状态合并）
+  return Order.find(q).sort({ createdAt: -1 }).lean();
 };
 
 // 师傅 签到

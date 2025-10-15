@@ -2,7 +2,8 @@ const technicianService = require('../services/technicianService');
 
 exports.listMine = async (req,res,next)=>{
   try {
-    const list = await technicianService.listForTechnician(req.user.sub);
+    const { status } = req.query || {};
+    const list = await technicianService.listForTechnician(req.user.sub, status);
     res.json(list);
   } catch(e){ next(e); }
 };

@@ -51,7 +51,8 @@ exports.requestComplete = async (req,res,next)=>{
 
 exports.getReview = async (req,res,next)=>{
   try {
-    const data = await technicianService.getReview(req.params.id, req.user);
+    // 明确只允许查看属于自己的订单评价
+    const data = await technicianService.getReview(req.params.id, { technicianId: req.user.sub });
     res.json(data || {});
   } catch(e){ next(e); }
 };

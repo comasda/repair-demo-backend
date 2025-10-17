@@ -12,6 +12,6 @@ router.put('/:id/status', verifyJWT, requireRole('technician'), ctrl.updateStatu
 router.post('/:id/accept', verifyJWT, requireRole('technician'), ctrl.acceptOffer);
 router.post('/:id/decline', verifyJWT, requireRole('technician'), ctrl.declineOffer);
 router.post('/:id/complete-request', verifyJWT, requireRole('technician'), ctrl.requestComplete);
-router.get('/:id/review', verifyJWT, ctrl.getReview);
+router.get('/:id/review', verifyJWT, requireRole('technician'), ctrl.getReview)
 
 module.exports = router;

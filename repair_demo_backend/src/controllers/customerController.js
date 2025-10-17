@@ -33,7 +33,16 @@ exports.confirmComplete = async (req,res,next)=>{
 
 exports.addReview = async (req,res,next)=>{
   try {
-    const ok = await customerService.addReview(req.params.id, req.user.sub, req.body);
+    // 从登录态注入 customerId / customerName，避免前端漏传或伪造
+    const { rating, content, images } = req.body || {};
+    const payload = {
+      customerId: req.user.sub,
+      customerName: req.user.username || '',
+      rating,
+      content,
+      images
+    };
+    const ok = await customerService.addReview(req.params.id, payload);
     if (!ok) return res.status(400).json({ message:'评价失败' });
     res.json({ ok:true });
   } catch(e){ next(e); }

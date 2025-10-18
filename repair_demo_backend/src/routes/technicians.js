@@ -15,5 +15,6 @@ router.post('/:id/complete-request', verifyJWT, requireRole('technician'), ctrl.
 router.get('/:id/review', verifyJWT, requireRole('technician'), ctrl.getReview);
 
 router.get('/', verifyJWT, requireRole('admin'), ctrl.listAll);
+router.get('/approved', verifyJWT, requireRole('admin'), ctrl.listApproved);
 
 module.exports = router;

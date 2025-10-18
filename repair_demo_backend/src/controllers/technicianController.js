@@ -88,3 +88,15 @@ exports.listAll = async (req, res, next) => {
     res.json(list || []);
   } catch (e) { next(e); }
 };
+
+// 管理员：获取审核通过的技师列表（用于指派）
+exports.listApproved = async (req, res, next) => {
+  try {
+    const { q } = req.query || {};
+    const list = await technicianService.listApproved(q);
+    res.json({ list });
+  } catch (e) {
+    next(e);
+  }
+};
+

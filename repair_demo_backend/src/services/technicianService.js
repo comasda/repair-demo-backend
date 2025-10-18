@@ -203,3 +203,32 @@ exports.listAll = async (q) => {
     .sort({ createdAt: -1 })
     .lean();
 };
+
+// 管理员：获取审核通过的技师列表（用于指派）
+exports.listApproved = async (q) => {
+  const query = { role: 'technician', reviewStatus: 'pending' };
+
+  if (q) {
+    // 支持姓名或手机号模糊匹配
+    query.$or = [
+      { 'idCard.name': new RegExp(q, 'i') },
+      { phone: new RegExp(q, 'i') },
+    ];
+  }
+
+  // 只返回必要字段
+  const list = await User.find(query, {
+    _id: 1,
+    phone: 1,
+    'idCard.name': 1,
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // 格式化字段兼容前端
+  return list.map((u) => ({
+    _id: u._id,
+    name: u.idCard?.name || '',
+    phone: u.phone,
+  }));
+};

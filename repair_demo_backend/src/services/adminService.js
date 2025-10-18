@@ -1,42 +1,47 @@
+// services/adminService.js
 const Order = require('../models/Order');
 
-/**
- * 查询订单
- * @param {string} [status] 可选状态
- */
+function httpError(status, message) {
+  const e = new Error(message);
+  e.statusCode = status;
+  return e;
+}
+const now = () => new Date().toISOString();
+
 exports.listForAdmin = async (status) => {
-  const q = { status: status || 'pending' };
-  const items = await Order.find(q).sort({ createdAt: -1 }).lean();
-  return items;
+  const q = status ? { status } : {};
+  return Order.find(q).sort({ createdAt: -1 }).lean();
 };
 
+// 管理员发起指派：pending/offered -> offered（并发安全）
+exports.assignOrder = async (id, { technicianId, technicianName = '', adminId = '', adminName = '' } = {}) => {
+  if (!technicianId) throw httpError(400, '缺少参数: technicianId');
 
-/**
- * 管理员指派订单
- * @param {string} id 订单ID
- * @param {string} technicianId 技师ID
- * @param {string} technicianName 技师姓名
- */
-// 管理员指派（offered）
-exports.assignOrder  = async (id, { technicianId, technicianName, adminId, adminName } = {}) => {
-  if (!technicianId || !technicianName) throw httpError(400, '缺少参数: technicianId, technicianName');
-  const order = await Order.findById(id);
-  if (!order) throw httpError(404, '订单不存在');
-  if (!['pending', 'offered'].includes(order.status)) throw httpError(400, '当前状态不可指派');
+  // 先校验存在性，便于明确 404
+  const exist = await Order.findById(id);
+  if (!exist) throw httpError(404, '订单不存在');
 
-  const time = fmt();
-  order.status = 'offered';
-  order.technicianId = technicianId;
-  order.technicianName = technicianName;
-  order.offerFlow = Object.assign({}, order.offerFlow, {
-    offeredAt: time,
-    offeredBy: adminName || adminId || '',
-  });
-  order.history = order.history || [];
-  order.history.push({ time, note: `管理员指派给 ${technicianName}（待接收）` });
-  await order.save();
+  const t = now();
+  const updated = await Order.findOneAndUpdate(
+    { _id: id, status: { $in: ['pending', 'offered'] } },  // 条件更新，抗并发
+    {
+      $set: {
+        status: 'offered',
+        technicianId,
+        technicianName,
+        'offerFlow.offeredAt': t,
+        'offerFlow.offeredBy': adminName || adminId || 'admin',
+      },
+      $push: {
+        history: { time: t, note: `管理员指派给 ${technicianName || technicianId}（待接收）` },
+      },
+    },
+    { new: true }
+  ).lean();
 
-  const o = order.toObject();
-  o.statusText = statusMap[o.status] || o.status;
-  return o;
+  if (!updated) {
+    // 并发下可能被别人改状态了
+    throw httpError(409, '指派失败：订单状态已变化，请刷新后重试');
+  }
+  return updated;
 };

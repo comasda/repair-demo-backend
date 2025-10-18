@@ -56,3 +56,12 @@ exports.getReview = async (req,res,next)=>{
     res.json(data || {});
   } catch(e){ next(e); }
 };
+
+// 管理员：获取技师列表
+exports.listAll = async (req, res, next) => {
+  try {
+    const { q } = req.query || {};
+    const list = await technicianService.listAll(q);
+    res.json(list || []);
+  } catch (e) { next(e); }
+};

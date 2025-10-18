@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const User = require('../models/User');
 
 const CHECKIN_RADIUS_M = Number(process.env.CHECKIN_RADIUS_M || 200);
 
@@ -188,4 +189,17 @@ exports.getReview = async (id, { technicianId } = {}) => {
       customerName: r.customerName || '用户',
     })),
   };
+};
+
+// 管理员：获取技师列表（支持关键词 q）
+exports.listAll = async (q) => {
+  const query = { role: 'technician' };
+  if (q) {
+    // 你当前 User 模型字段是 username
+    query.username = new RegExp(q, 'i');
+  }
+  // 只返回必要字段，避免把 password 带出去！
+  return User.find(query, { username: 1 }) // 仅选出 _id, username
+    .sort({ createdAt: -1 })
+    .lean();
 };

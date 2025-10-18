@@ -1,9 +1,27 @@
 const userService = require('../services/userService');
 
+// 发送验证码
+exports.sendCaptcha = async (req, res, next) => {
+  try {
+    const { phone, scene = 'register' } = req.body || {};
+    const data = await userService.sendCaptcha(phone, scene);
+    res.json({ ok: true, message: '验证码已发送', ...data });
+  } catch (err) { next(err); }
+};
+
+// （可选）单独校验验证码：用于找回密码/改绑等
+exports.verifyCaptcha = async (req, res, next) => {
+  try {
+    const { phone, code, scene = 'register' } = req.body || {};
+    await userService.verifyCaptcha(phone, code, scene);
+    res.json({ ok: true, message: '验证通过' });
+  } catch (err) { next(err); }
+};
+
 exports.register = async (req, res, next) => {
   try {
     const data = await userService.register(req.body || {});
-    res.json({ message: '注册成功', ...data });
+    res.json({ ok: true, message: '注册成功', ...data });
   } catch (err) {
     next(err);
   }

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const UserSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true }, // 兼容老字段（默认用手机号做 username）
   phone:    { type: String, required: true, unique: true },
   password: { type: String, required: true }, // TODO: 上线前改为哈希

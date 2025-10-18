@@ -8,20 +8,31 @@ exports.listMine = async (req,res,next)=>{
   } catch(e){ next(e); }
 };
 
-exports.checkin = async (req,res,next)=>{
+exports.checkin = async (req, res, next) => {
   try {
-    const ok = await technicianService.checkin(req.params.id, req.user.sub, req.body);
-    if (!ok) return res.status(400).json({ message:'签到失败' });
-    res.json({ ok:true });
-  } catch(e){ next(e); }
+    const { lat, lng } = req.body || {};
+    const payload = {
+      lat,
+      lng,
+      technicianId: req.user?.sub,
+      technicianName: req.user?.username || req.user?.name || '',
+    };
+    const updated = await technicianService.checkin(req.params.id, payload);
+    // 你也可以只返回 {ok:true}；这里把最新工单返回更方便前端刷新
+    res.json({ ok: true, data: updated });
+  } catch (e) { next(e); }
 };
 
-exports.updateStatus = async (req,res,next)=>{
+exports.updateStatus = async (req, res, next) => {
   try {
-    const ok = await technicianService.updateStatusByTech(req.params.id, req.user.sub, req.body?.status);
-    if (!ok) return res.status(400).json({ message:'更新失败' });
-    res.json({ ok:true });
-  } catch(e){ next(e); }
+    // service 里是 exports.updateStatus(id, status, note)
+    const updated = await technicianService.updateStatus(
+      req.params.id,
+      req.body?.status,
+      req.body?.note || ''
+    );
+    res.json({ ok: true, data: updated });
+  } catch (e) { next(e); }
 };
 
 exports.acceptOffer = async (req,res,next)=>{

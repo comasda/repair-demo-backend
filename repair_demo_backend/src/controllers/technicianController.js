@@ -45,9 +45,21 @@ exports.acceptOffer = async (req,res,next)=>{
 
 exports.declineOffer = async (req,res,next)=>{
   try {
-    const ok = await technicianService.declineOffer(req.params.id, req.user.sub, req.body?.reason || '');
-    if (!ok) return res.status(400).json({ message:'当前状态不可拒绝或不属于你' });
-    res.json({ ok:true });
+    const updated = await technicianService.declineOffer(
+      req.params.id,
+      req.user.sub,
+      req.body?.reason || ''
+    );
+
+    if (!updated) {
+      return res.status(409).json({ message: '当前状态不可拒绝或不属于你' });
+    }
+
+    res.json({
+      ok: true,
+      message: '已拒绝指派',
+      data: updated,
+    });
   } catch(e){ next(e); }
 };
 

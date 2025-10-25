@@ -11,5 +11,6 @@ router.get('/me', (req,res)=>res.json({ user:{ id:req.user.sub, username:req.use
 // 订单管理
 router.get('/orders', adminCtrl.listOrders);          // 默认 pending，可 ?status=offered/...
 router.post('/orders/:id/assign', adminCtrl.assignOrder);
+router.get('/orders/export', adminCtrl.exportOrders);
 
 module.exports = router;

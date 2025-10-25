@@ -45,3 +45,19 @@ exports.assignOrder = async (id, { technicianId, technicianName = '', adminId = 
   }
   return updated;
 };
+
+// 导出所有订单
+exports.exportOrders = async (filter = {}) => {
+  const Order = require('../models/Order');
+  const q = {};
+
+  if (filter.status) q.status = filter.status;
+  if (filter.from || filter.to) {
+    q.createdAt = {};
+    if (filter.from) q.createdAt.$gte = new Date(filter.from);
+    if (filter.to) q.createdAt.$lte = new Date(filter.to);
+  }
+
+  return Order.find(q).sort({ createdAt: -1 }).lean();
+};
+

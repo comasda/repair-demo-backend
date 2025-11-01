@@ -206,7 +206,7 @@ exports.listAll = async (q) => {
 
 // 管理员：获取审核通过的技师列表（用于指派）
 exports.listApproved = async (q) => {
-  const query = { role: 'technician', reviewStatus: 'pending' };
+  const query = { role: 'technician', reviewStatus: 'approved' };
 
   if (q) {
     // 支持姓名或手机号模糊匹配

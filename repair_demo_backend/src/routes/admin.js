@@ -12,5 +12,10 @@ router.get('/me', (req,res)=>res.json({ user:{ id:req.user.sub, username:req.use
 router.get('/orders', adminCtrl.listOrders);          // 默认 pending，可 ?status=offered/...
 router.post('/orders/:id/assign', adminCtrl.assignOrder);
 router.get('/orders/export', adminCtrl.exportOrders);
+// 技师审核
+router.get('/technicians', adminCtrl.listTechnicians);
+router.get('/technicians/:id', adminCtrl.getTechnician);
+router.post('/technicians/:id/approve', adminCtrl.approveTechnician);
+router.post('/technicians/:id/reject', adminCtrl.rejectTechnician);
 
 module.exports = router;

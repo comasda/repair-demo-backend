@@ -91,3 +91,36 @@ exports.exportOrders = async (req, res, next) => {
     next(err);
   }
 };
+
+// ========= 技师审核 =========
+exports.listTechnicians = async (req, res, next) => {
+  try {
+    const { status, q, page, pageSize } = req.query || {};
+    const data = await adminService.listTechnicians({ status, q, page, pageSize });
+    res.json(data);
+  } catch (e) { next(e); }
+};
+
+exports.getTechnician = async (req, res, next) => {
+  try {
+    const data = await adminService.getTechnician(req.params.id);
+    res.json(data);
+  } catch (e) { next(e); }
+};
+
+exports.approveTechnician = async (req, res, next) => {
+  try {
+    const adminId = req.user?.sub, adminName = req.user?.username || 'admin';
+    const data = await adminService.approveTechnician(req.params.id, { adminId, adminName });
+    res.json({ ok: true, message: '审核已通过', data });
+  } catch (e) { next(e); }
+};
+
+exports.rejectTechnician = async (req, res, next) => {
+  try {
+    const reason = req.body?.reason || '';
+    const adminId = req.user?.sub, adminName = req.user?.username || 'admin';
+    const data = await adminService.rejectTechnician(req.params.id, reason, { adminId, adminName });
+    res.json({ ok: true, message: '已驳回', data });
+  } catch (e) { next(e); }
+};

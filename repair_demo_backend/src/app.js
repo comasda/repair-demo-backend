@@ -5,6 +5,7 @@ const { connectDB } = require('./../src/db');
 const users = require('./routes/users');
 const customer = require('./routes/customer');
 const technicians = require('./routes/technicians');
+const upload = require('./routes/upload');
 const { errorHandler } = require('./middleware/error');
 const { verifyJWT, requireRole } = require('./middleware/auth');
 const admin = require('./routes/admin');
@@ -23,6 +24,11 @@ app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISO
 app.use('/api/users', users);
 app.use('/api/customer', customer);
 app.use('/api/technicians', technicians);
+app.use('/api/upload', upload);
+
+// 静态托管上传文件
+const path = require('path');
+app.use('/api/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // 管理端受保护路由
 app.use('/api/admin', verifyJWT, requireRole('admin'), admin);

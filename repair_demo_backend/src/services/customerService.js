@@ -127,3 +127,30 @@ exports.addReview = async (id, { customerId, customerName, rating, content, imag
   );
   return { message: '评价成功' };
 };
+
+// 客户取消订单（仅 pending/offered）
+exports.cancel = async (id, { customerId, reason = '' }) => {
+  if (!customerId) throw httpError(400, '缺少参数: customerId');
+
+  const order = await Order.findById(id);
+  if (!order) throw httpError(404, '工单不存在');
+  if (String(order.customerId) !== String(customerId)) {
+    throw httpError(403, '仅该订单的客户可取消');
+  }
+  if (!['pending', 'offered'].includes(order.status)) {
+    throw httpError(400, '当前状态不可取消');
+  }
+
+  const time = fmt(new Date());
+  order.status = 'cancelled';
+  order.cancelFlow = Object.assign({}, order.cancelFlow, {
+    cancelledAt: time,
+    cancelledBy: customerId,
+    reason
+  });
+  order.history = order.history || [];
+  order.history.push({ time, note: '客户取消订单' });
+  await order.save();
+
+  return { message: '取消成功', status: order.status };
+};

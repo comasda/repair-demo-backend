@@ -38,7 +38,7 @@ const orderSchema = new mongoose.Schema({
   },
   locationAddress: { type: String, default: '' }, // chooseLocation 的可读地址
   time: { type: String, required: true },           // 创建时间
-  status: { type: String, enum: ['pending','offered','assigned','checkedIn','awaitingConfirm','done'], default: 'pending' },
+  status: { type: String, enum: ['pending','offered','assigned','checkedIn','awaitingConfirm','done','cancelled'], default: 'pending' },
   technicianId: { type: String, default: null },
   technicianName: { type: String, default: null },
   history: { type: [historySchema], default: [] },
@@ -52,6 +52,12 @@ const orderSchema = new mongoose.Schema({
     declinedAt:  { type: String, default: '' },  // 师傅拒绝时间
     declineNote: { type: String, default: '' }   // 拒绝原因
   },
+  // 取消记录（软删除语义）
+  cancelFlow: {
+    cancelledAt: { type: String, default: '' },
+    cancelledBy: { type: String, default: '' },   // customerId
+    reason:      { type: String, default: '' }
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

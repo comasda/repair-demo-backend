@@ -47,3 +47,15 @@ exports.addReview = async (req,res,next)=>{
     res.json({ ok:true });
   } catch(e){ next(e); }
 };
+
+// 取消订单
+exports.cancel = async (req,res,next)=>{
+  try {
+    const { reason = '' } = req.body || {};
+    const r = await customerService.cancel(req.params.id, {
+      customerId: req.user.sub,
+      reason
+    });
+    res.json(r);
+  } catch(e){ next(e); }
+};

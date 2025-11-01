@@ -8,5 +8,6 @@ router.get('/', verifyJWT, requireRole('customer'), ctrl.listMine);             
 router.get('/:id', verifyJWT, ctrl.detailSafe);                                  // 详情（相关方可见）
 router.post('/:id/complete-confirm', verifyJWT, requireRole('customer'), ctrl.confirmComplete);
 router.post('/:id/reviews', verifyJWT, requireRole('customer'), ctrl.addReview);
+router.post('/:id/cancel', verifyJWT, requireRole('customer'), ctrl.cancel);  
 
  module.exports = router;

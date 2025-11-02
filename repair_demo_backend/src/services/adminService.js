@@ -125,3 +125,44 @@ exports.rejectTechnician = async (id, reason = '', { adminId, adminName } = {}) 
   await user.save();
   return user.toObject();
 };
+
+// ========= 管理员修改订单状态 =========
+const ALLOWED_STATUSES = ['pending','offered','assigned','checkedIn','awaitingConfirm','done','cancelled'];
+// 简易状态机限制：已完成/已取消不可回退；其他放宽（如有更严规则可再细化）
+const FORBID_FROM = new Set(['done','cancelled']);
+
+exports.updateOrderStatus = async (id, nextStatus, { reason = '', adminId = '', adminName = '' } = {}) => {
+  if (!ALLOWED_STATUSES.includes(nextStatus)) {
+    throw httpError(400, `非法状态: ${nextStatus}`);
+  }
+
+  const doc = await Order.findById(id);
+  if (!doc) throw httpError(404, '订单不存在');
+
+  const from = doc.status;
+  if (FORBID_FROM.has(from) && nextStatus !== from) {
+    throw httpError(409, `当前状态(${from})不可变更`);
+  }
+  if (from === nextStatus) {
+    // 幂等：不改动直接返回
+    return doc.toObject();
+  }
+
+  const t = now();
+  const ops = {
+    $set: { status: nextStatus },
+    $push: { history: { time: t, note: `管理员将状态 ${from} → ${nextStatus}${reason ? `（${reason}）` : ''}` } }
+  };
+
+  // 若是取消，写 cancelFlow
+  if (nextStatus === 'cancelled') {
+    ops.$set['cancelFlow.cancelledAt'] = t;
+    ops.$set['cancelFlow.cancelledBy'] = adminName || adminId || 'admin';
+    if (reason) ops.$set['cancelFlow.reason'] = reason;
+  }
+
+  const updated = await Order.findOneAndUpdate(
+    { _id: id }, ops, { new: true }
+  ).lean();
+  return updated;
+};

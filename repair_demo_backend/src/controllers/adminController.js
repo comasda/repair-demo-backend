@@ -124,3 +124,25 @@ exports.rejectTechnician = async (req, res, next) => {
     res.json({ ok: true, message: '已驳回', data });
   } catch (e) { next(e); }
 };
+
+// 管理员修改订单状态
+exports.updateOrderStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, reason } = req.body || {};
+    if (!status) return res.status(400).json({ message: '缺少目标状态 status' });
+
+    const adminInfo = {
+      adminId: req.user?.sub || '',
+      adminName: req.user?.username || 'admin',
+    };
+
+    const updated = await adminService.updateOrderStatus(id, status, {
+      reason: reason || '',
+      ...adminInfo,
+    });
+    res.json({ ok: true, data: updated, message: '状态已更新' });
+  } catch (err) {
+    next(err);
+  }
+};

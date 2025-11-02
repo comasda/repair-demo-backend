@@ -166,3 +166,9 @@ exports.updateOrderStatus = async (id, nextStatus, { reason = '', adminId = '', 
   ).lean();
   return updated;
 };
+
+// 获取单个订单（管理端）
+exports.getOrderById = async (id) => {
+  const o = await Order.findById(id).lean();
+  return o || null;
+};

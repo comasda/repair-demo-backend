@@ -18,5 +18,6 @@ router.get('/technicians/:id', adminCtrl.getTechnician);
 router.post('/technicians/:id/approve', adminCtrl.approveTechnician);
 router.post('/technicians/:id/reject', adminCtrl.rejectTechnician);
 router.post('/orders/:id/status', adminCtrl.updateOrderStatus);
+router.get('/orders/:id', adminCtrl.getOrder);
 
 module.exports = router;

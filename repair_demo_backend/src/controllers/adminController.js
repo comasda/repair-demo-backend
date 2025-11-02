@@ -1,16 +1,55 @@
 const adminService = require('../services/adminService');
 const ExcelJS = require('exceljs');
+const uploadService = require('../services/uploadService');
+
+// 工具：把图片地址转为绝对URL
+function absolutizeImages(req, images = []) {
+  return (images || []).map((u) => {
+    if (!u) return u;
+    // 1) 已经是 http(s) 绝对地址 -> 原样返回
+    if (/^https?:\/\//i.test(u)) return u;
+    // 2) /api/uploads/xxx -> 转为带域名的绝对地址
+    if (u.startsWith('/api/uploads/')) {
+      const filename = u.replace('/api/uploads/', '');
+      return uploadService.buildPublicUrl(req, filename);
+    }
+    // 3) 仅有文件名 -> 也转绝对地址
+    return uploadService.buildPublicUrl(req, u);
+  });
+}
 
 // 列出订单
 exports.listOrders = async (req, res, next) => {
   try {
     const { status } = req.query || {};
     const orders = await adminService.listForAdmin(status);
-    res.json(orders || []);
+    const data = (orders || []).map(o => ({
+      ...o,
+      images: absolutizeImages(req, o.images)
+    }));
+    res.json(data);
   } catch (err) {
     next(err);
   }
 };
+
+// 获取订单详情（含绝对URL的图片）
+exports.getOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const o = await adminService.getOrderById(id);
+    if (!o) return res.status(404).json({ message: '订单不存在' });
+    o.images = absolutizeImages(req, o.images);
+    // 如果后面还会预览评价图片，也可一并绝对化
+    if (Array.isArray(o.reviews)) {
+      o.reviews = o.reviews.map(r => ({
+        ...r,
+        images: absolutizeImages(req, r.images)
+      }));
+    }
+    res.json(o);
+  } catch (e) { next(e); }
+}
 
 // 指派订单
 exports.assignOrder = async (req, res, next) => {

@@ -19,6 +19,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
     command: npx nodemon src/app.js
     environment:
+      - USE_FIXED_OTP=true
       - PORT=8080
       - MONGO_URI=mongodb://mongo:27017/repair_demo
       - CORS_ORIGINS=*

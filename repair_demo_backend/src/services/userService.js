@@ -1,6 +1,9 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
+// 是否使用固定验证码（开发模式）
+const USE_FIXED_OTP = process.env.USE_FIXED_OTP === 'true';
+
 const sign = (u) =>
   jwt.sign(
     { sub: String(u._id), role: u.role, username: u.username },
@@ -29,11 +32,17 @@ exports.sendCaptcha = async (phone, scene = 'register') => {
     const e = new Error('验证码发送过于频繁，请稍后再试');
     e.status = 429; throw e;
   }
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  let code;
+  if (USE_FIXED_OTP) {
+    code = '123456';
+    console.log(`[MockSMS][${scene}] 固定验证码: ${code}`);
+  } else {
+    code = String(Math.floor(100000 + Math.random() * 900000));
+    console.log(`[SMS][${scene}] 发送给 ${phone} 的验证码：${code}`);
+  }
+
   captchaStore.set(k, { code, expireAt: now + CAPTCHA_TTL_MS, lastSendAt: now });
-  // TODO: 在此接入真实短信平台（阿里云/腾讯云），此处仅打印
-  console.log(`[SMS][${scene}] 发送给 ${phone} 的验证码：${code}`);
-  return { expireAt: now + CAPTCHA_TTL_MS };
+  return { expireAt: now + CAPTCHA_TTL_MS, hint: USE_FIXED_OTP ? 'fixed' : undefined };
 };
 
 exports.verifyCaptcha = async (phone, code, scene = 'register') => {
@@ -49,8 +58,12 @@ exports.verifyCaptcha = async (phone, code, scene = 'register') => {
     const e = new Error('验证码已过期');
     e.status = 400; throw e;
   }
-  if (rec.code !== code) {
-    const e = new Error('验证码错误');
+  if (USE_FIXED_OTP) {
+    if (code === '123456') return; // 固定码直接通过
+  }
+
+  if (!rec) {
+    const e = new Error('请先获取验证码');
     e.status = 400; throw e;
   }
   // 通过后即刻删除，避免重放

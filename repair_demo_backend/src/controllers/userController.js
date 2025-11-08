@@ -67,3 +67,32 @@ exports.me = async (req, res) => {
     },
   });
 };
+
+exports.reviewStatus = async (req, res, next) => {
+  try {
+    const data = await userService.getReviewStatus(req.user.sub);
+    res.json(data);
+  } catch (err) { next(err); }
+};
+
+exports.resubmitReview = async (req, res, next) => {
+  try {
+    const data = await userService.resubmitReview(req.user.sub, req.body);
+    res.json({ ok: true, message: '已重新提交审核', ...data });
+  } catch (err) { next(err); }
+};
+
+exports.resubmitReviewPublic = async (req, res, next) => {
+  try {
+    const { phone, code, idCard } = req.body || {};
+    if (!phone || !code) {
+      const e = new Error('手机号与验证码必填');
+      e.status = 400; throw e;
+    }
+    // 验证短信（支持固定 123456）
+    await userService.verifyCaptcha(phone, code, 'reapply');
+
+    const data = await userService.resubmitReviewByPhone(phone, { idCard });
+    res.json({ ok: true, message: '已重新提交审核', ...data });
+  } catch (err) { next(err); }
+};

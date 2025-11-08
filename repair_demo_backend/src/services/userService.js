@@ -118,6 +118,23 @@ exports.login = async (username, password) => {
     e.status = 401;
     throw e;
   }
+
+  if (['customer', 'technician'].includes(user.role)) {
+    if (user.reviewStatus === 'pending') {
+      const e = new Error('账号待审核');
+      e.code = 'ACCOUNT_PENDING';
+      e.status = 403;
+      throw e;
+    }
+    if (user.reviewStatus === 'rejected') {
+      const e = new Error('账号审核被驳回');
+      e.code = 'ACCOUNT_REJECTED';
+      e.status = 403;
+      e.reason = user.reviewAudit?.reason || '未填写原因';
+      throw e;
+    }
+  }
+
   return {
     user: { id: user._id, username: user.username, role: user.role },
     accessToken: sign(user),
@@ -150,4 +167,64 @@ exports.getById = async (id) => {
     throw e;
   }
   return doc;
+};
+
+exports.getReviewStatus = async (userId) => {
+  const user = await User.findById(userId).select('reviewStatus reviewAudit reviewHistory idCard');
+  if (!user) {
+    const e = new Error('用户不存在');
+    e.status = 404;
+    throw e;
+  }
+  return user;
+};
+
+exports.resubmitReview = async (userId, { idCard = {} }) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    const e = new Error('用户不存在');
+    e.status = 404;
+    throw e;
+  }
+  if (!idCard.name || !idCard.number) {
+    const e = new Error('请填写实名与身份证号');
+    e.status = 400;
+    throw e;
+  }
+
+  user.idCard = idCard;
+  user.reviewStatus = 'pending';
+  user.reviewAudit = { result: 'resubmitted', reason: null, auditedAt: new Date() };
+  user.reviewHistory = user.reviewHistory || [];
+  user.reviewHistory.push({ time: new Date(), result: 'resubmitted' });
+  await user.save();
+  return { user: { id: user._id, reviewStatus: user.reviewStatus } };
+};
+
+exports.resubmitReviewByPhone = async (phone, { idCard = {} } = {}) => {
+  const user = await User.findOne({ phone });
+  if (!user) {
+    const e = new Error('用户不存在');
+    e.status = 404; throw e;
+  }
+  if (!idCard.name || !idCard.number) {
+    const e = new Error('请填写实名与身份证号');
+    e.status = 400; throw e;
+  }
+  // 仅客户/师傅允许走审核流
+  if (!['customer', 'technician'].includes(user.role)) {
+    const e = new Error('该账号无需审核');
+    e.status = 400; throw e;
+  }
+
+  // 更新实名信息 & 重置为 pending
+  user.idCard = idCard;
+  user.reviewStatus = 'pending';
+  // 保留上次驳回记录，追加 resubmitted 轨迹
+  user.reviewHistory = user.reviewHistory || [];
+  user.reviewHistory.push({ time: new Date(), result: 'resubmitted' });
+  // 可选择清理 reviewAudit，也可保留 last audit；这里保留，便于管理员回看
+  await user.save();
+
+  return { user: { id: user._id, reviewStatus: user.reviewStatus } };
 };

@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   reviewHistory: [{
     time:   { type: Date, default: Date.now },
     admin:  { type: String },
-    result: { type: String, enum: ['approved','rejected'] },
+    result: { type: String, enum: ['approved','rejected','resubmitted','pending'] },
     reason: { type: String }
   }]
 }, { timestamps: true });

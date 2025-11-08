@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
     name:   { type: String },
     number: { type: String }
   },
-  // 仅师傅使用：注册后进入审核流
+  // 客户/师傅使用：注册后进入审核流
   reviewStatus: { type: String, enum: ['pending','approved','rejected'], default: 'pending' },
   // 审核审计（最后一次）
   reviewAudit: {

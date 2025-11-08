@@ -185,3 +185,36 @@ exports.updateOrderStatus = async (req, res, next) => {
     next(err);
   }
 };
+
+// ========= 客户审核（与技师审核同结构）=========
+exports.listCustomers = async (req, res, next) => {
+  try {
+    const { status, q, page, pageSize } = req.query || {};
+    const data = await adminService.listCustomers({ status, q, page, pageSize });
+    res.json(data);
+  } catch (e) { next(e); }
+};
+
+exports.getCustomer = async (req, res, next) => {
+  try {
+    const data = await adminService.getCustomer(req.params.id);
+    res.json(data);
+  } catch (e) { next(e); }
+};
+
+exports.approveCustomer = async (req, res, next) => {
+  try {
+    const adminId = req.user?.sub, adminName = req.user?.username || 'admin';
+    const data = await adminService.approveCustomer(req.params.id, { adminId, adminName });
+    res.json({ ok: true, message: '审核已通过', data });
+  } catch (e) { next(e); }
+};
+
+exports.rejectCustomer = async (req, res, next) => {
+  try {
+    const reason = req.body?.reason || '';
+    const adminId = req.user?.sub, adminName = req.user?.username || 'admin';
+    const data = await adminService.rejectCustomer(req.params.id, reason, { adminId, adminName });
+    res.json({ ok: true, message: '已驳回', data });
+  } catch (e) { next(e); }
+};

@@ -172,3 +172,67 @@ exports.getOrderById = async (id) => {
   const o = await Order.findById(id).lean();
   return o || null;
 };
+
+
+// ========= 客户审核相关（与技师相同逻辑）=========
+exports.listCustomers = async ({ status, q, page = 1, pageSize = 20 } = {}) => {
+  const query = { role: 'customer' };
+  if (status) query.reviewStatus = status;
+  if (q) {
+    query.$or = [
+      { username: new RegExp(q, 'i') },
+      { phone:    new RegExp(q, 'i') },
+      { 'idCard.name': new RegExp(q, 'i') }
+    ];
+  }
+  page = Math.max(1, Number(page) || 1);
+  pageSize = Math.min(100, Math.max(1, Number(pageSize) || 20));
+  const skip = (page - 1) * pageSize;
+  const [items, total] = await Promise.all([
+    User.find(query, {
+      username: 1, phone: 1, role: 1,
+      reviewStatus: 1, idCard: 1, createdAt: 1, reviewAudit: 1
+    }).sort({ createdAt: -1 }).skip(skip).limit(pageSize).lean(),
+    User.countDocuments(query)
+  ]);
+  return { items, total, page, pageSize };
+};
+
+exports.getCustomer = async (id) => {
+  const doc = await User.findOne({ _id: id, role: 'customer' }, {
+    username: 1, phone: 1, role: 1, profile: 1, idCard: 1,
+    reviewStatus: 1, reviewAudit: 1, reviewHistory: 1, createdAt: 1
+  }).lean();
+  if (!doc) throw httpError(404, '客户不存在');
+  return doc;
+};
+
+exports.approveCustomer = async (id, { adminId, adminName } = {}) => {
+  const t = new Date();
+  const user = await User.findOne({ _id: id, role: 'customer' });
+  if (!user) throw httpError(404, '客户不存在');
+  if (user.reviewStatus === 'approved') return user;             // 幂等
+  if (user.reviewStatus !== 'pending') throw httpError(409, '当前状态不可通过');
+
+  user.reviewStatus = 'approved';
+  user.reviewAudit = { auditedAt: t, auditedBy: adminName || adminId || 'admin', result: 'approved', reason: '' };
+  user.reviewHistory = user.reviewHistory || [];
+  user.reviewHistory.push({ time: t, admin: adminName || adminId || 'admin', result: 'approved', reason: '' });
+  await user.save();
+  return user.toObject();
+};
+
+exports.rejectCustomer = async (id, reason = '', { adminId, adminName } = {}) => {
+  const t = new Date();
+  const user = await User.findOne({ _id: id, role: 'customer' });
+  if (!user) throw httpError(404, '客户不存在');
+  if (user.reviewStatus === 'rejected' && user.reviewAudit?.reason === reason) return user; // 幂等
+  if (user.reviewStatus !== 'pending') throw httpError(409, '当前状态不可驳回');
+
+  user.reviewStatus = 'rejected';
+  user.reviewAudit  = { auditedAt: t, auditedBy: adminName || adminId || 'admin', result: 'rejected', reason: reason || '' };
+  user.reviewHistory = user.reviewHistory || [];
+  user.reviewHistory.push({ time: t, admin: adminName || adminId || 'admin', result: 'rejected', reason: reason || '' });
+  await user.save();
+  return user.toObject();
+};

@@ -70,7 +70,7 @@ exports.verifyCaptcha = async (phone, code, scene = 'register') => {
   captchaStore.delete(k);
 };
 
-// ---------------- 带验证码的注册（支持客户/师傅差异校验） ----------------
+// ---------------- 带验证码的注册（客户/师傅都按实名 + 审核流） ----------------
 exports.register = async ({ phone, password, code, role = 'customer', profile = {}, idCard = {} }) => {
   if (!phone || !password || !code) {
     const e = new Error('手机号、验证码和密码均不能为空');
@@ -87,17 +87,10 @@ exports.register = async ({ phone, password, code, role = 'customer', profile = 
     e.status = 400; throw e;
   }
 
-  // 角色必填校验
-  if (role === 'customer') {
-    if (!profile?.name || !profile?.gender) {
-      const e = new Error('客户注册需提供姓名与性别');
-      e.status = 400; throw e;
-    }
-  } else if (role === 'technician') {
-    if (!idCard?.name || !idCard?.number) {
-      const e = new Error('师傅注册需提供身份证姓名和号码');
-      e.status = 400; throw e;
-    }
+  // ✅ 统一实名要求：客户 & 师傅都需要身份证姓名+号码
+  if (!idCard?.name || !idCard?.number) {
+    const e = new Error('请填写实名与身份证号');
+    e.status = 400; throw e;
   }
 
   // 创建用户（注意：线上请改为密码哈希）
@@ -108,7 +101,8 @@ exports.register = async ({ phone, password, code, role = 'customer', profile = 
     role,
     profile,
     idCard,
-    reviewStatus: role === 'technician' ? 'pending' : undefined,
+    // ✅ 客户与师傅均进入审核流
+    reviewStatus: (role === 'technician' || role === 'customer') ? 'pending' : undefined,
   });
 
   return {

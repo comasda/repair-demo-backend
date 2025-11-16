@@ -44,6 +44,7 @@ const orderSchema = new mongoose.Schema({
   history: { type: [historySchema], default: [] },
   checkins: { type: [checkinSchema], default: [] },
   reviews: { type: [reviewSchema], default: [] },
+  checkinImages: { type: [String], default: [] },
   // 指派-接受-拒绝的审计痕迹
   offerFlow: {
     offeredAt:   { type: String, default: '' },  // 管理员指派时间

@@ -148,7 +148,7 @@ exports.declineOffer = async (id, technicianId, note = '') => {
 };
 
 // 师傅发起完成（需 checkedIn）
-exports.requestComplete = async (id, technicianId) => {
+exports.requestComplete = async (id, technicianId, checkinImages = []) => {
   if (!technicianId) throw httpError(400, '缺少参数: technicianId');
 
   const order = await Order.findById(id);
@@ -156,8 +156,14 @@ exports.requestComplete = async (id, technicianId) => {
   if (order.technicianId !== technicianId) throw httpError(403, '仅接单的师傅可发起完成');
   if (order.status !== 'checkedIn') throw httpError(400, '需到场签到后才能发起完成');
 
+  // ★ 必须上传 5 张签到照片（防止前端绕过）
+  if (!Array.isArray(checkinImages) || checkinImages.length < 5) {
+    throw httpError(400, '请上传 5 张签到照片');
+  }
+
   const time = fmt(new Date());
   order.status = 'awaitingConfirm';
+  order.checkinImages = checkinImages;
   order.completeFlow = Object.assign({}, order.completeFlow, {
     requestAt: time,
     requestedBy: technicianId,

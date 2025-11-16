@@ -65,7 +65,12 @@ exports.declineOffer = async (req,res,next)=>{
 
 exports.requestComplete = async (req,res,next)=>{
   try {
-    const ok = await technicianService.requestComplete(req.params.id, req.user.sub);
+   const checkinImages = req.body?.checkinImages || [];
+   const ok = await technicianService.requestComplete(
+     req.params.id,
+     req.user.sub,
+     checkinImages
+   );
     if (!ok) return res.status(400).json({ message:'无法提交完成' });
     res.json({ ok:true });
   } catch(e){ next(e); }

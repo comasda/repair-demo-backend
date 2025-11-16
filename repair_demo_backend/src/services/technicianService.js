@@ -169,9 +169,9 @@ exports.requestComplete = async (id, technicianId, checkinImages = []) => {
     requestedBy: technicianId,
   });
   order.history = order.history || [];
-  order.history.push({ time, note: '师傅发起完成，等待客户确认' });
+  order.history.push({ time, note: '师傅发起完成，等待平台审核' });
   await order.save();
-  return { message: '已发起完成确认', status: order.status };
+  return { message: '已发起完成申请，等待平台审核', status: order.status };
 };
 
 // 查看评价

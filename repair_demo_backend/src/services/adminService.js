@@ -236,3 +236,54 @@ exports.rejectCustomer = async (id, reason = '', { adminId, adminName } = {}) =>
   await user.save();
   return user.toObject();
 };
+
+// ========== 完成审核通过 ==========
+exports.approveComplete = async (id, { adminId = '', adminName = '' } = {}) => {
+  const order = await Order.findById(id);
+  if (!order) throw httpError(404, '订单不存在');
+  if (order.status !== 'awaitingConfirm')
+    throw httpError(400, '当前状态不可审核完成');
+
+  const t = now();
+
+  order.status = 'done';
+  order.completeFlow = Object.assign({}, order.completeFlow, {
+    approvedAt: t,
+    approvedBy: adminName || adminId || 'admin'
+  });
+
+  order.history = order.history || [];
+  order.history.push({
+    time: t,
+    note: `管理员审核通过，订单已完成`
+  });
+
+  await order.save();
+  return order.toObject();
+};
+
+// ========== 完成审核驳回（打回已签到） ==========
+exports.rejectComplete = async (id, reason = '', { adminId = '', adminName = '' } = {}) => {
+  const order = await Order.findById(id);
+  if (!order) throw httpError(404, '订单不存在');
+  if (order.status !== 'awaitingConfirm')
+    throw httpError(400, '当前状态不可驳回');
+
+  const t = now();
+
+  order.status = 'checkedIn';   // 打回签到状态
+  order.completeFlow = Object.assign({}, order.completeFlow, {
+    rejectedAt: t,
+    rejectedBy: adminName || adminId || 'admin',
+    rejectReason: reason
+  });
+
+  order.history = order.history || [];
+  order.history.push({
+    time: t,
+    note: `管理员驳回完成申请${reason ? `（${reason}）` : ''}`
+  });
+
+  await order.save();
+  return order.toObject();
+};

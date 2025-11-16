@@ -218,3 +218,34 @@ exports.rejectCustomer = async (req, res, next) => {
     res.json({ ok: true, message: '已驳回', data });
   } catch (e) { next(e); }
 };
+
+// ========== 完成审核：管理员同意 ==========
+exports.approveComplete = async (req, res, next) => {
+  try {
+    const adminId = req.user?.sub || '';
+    const adminName = req.user?.username || 'admin';
+    const result = await adminService.approveComplete(req.params.id, {
+      adminId,
+      adminName
+    });
+    res.json({ ok: true, message: '订单已审核通过', data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ========== 完成审核：管理员驳回 ==========
+exports.rejectComplete = async (req, res, next) => {
+  try {
+    const adminId = req.user?.sub || '';
+    const adminName = req.user?.username || 'admin';
+    const reason = req.body?.reason || '';
+    const result = await adminService.rejectComplete(req.params.id, reason, {
+      adminId,
+      adminName
+    });
+    res.json({ ok: true, message: '已驳回完成申请', data: result });
+  } catch (err) {
+    next(err);
+  }
+};

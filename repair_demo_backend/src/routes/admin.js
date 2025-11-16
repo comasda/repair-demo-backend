@@ -20,10 +20,14 @@ router.post('/technicians/:id/reject', adminCtrl.rejectTechnician);
 router.post('/orders/:id/status', adminCtrl.updateOrderStatus);
 router.get('/orders/:id', adminCtrl.getOrder);
 
-// ✅ 客户审核
+// 客户审核
 router.get('/customers', adminCtrl.listCustomers);
 router.get('/customers/:id', adminCtrl.getCustomer);
 router.post('/customers/:id/approve', adminCtrl.approveCustomer);
 router.post('/customers/:id/reject', adminCtrl.rejectCustomer);
+
+// ★ 完成审核：管理员通过 / 驳回
+router.post('/orders/:id/complete-approve', adminCtrl.approveComplete);
+router.post('/orders/:id/complete-reject', adminCtrl.rejectComplete);
 
 module.exports = router;

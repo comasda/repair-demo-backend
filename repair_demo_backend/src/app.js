@@ -9,8 +9,16 @@ const upload = require('./routes/upload');
 const { errorHandler } = require('./middleware/error');
 const { verifyJWT, requireRole } = require('./middleware/auth');
 const admin = require('./routes/admin');
+const notificationService = require('./services/notificationService'); // 引入通知服务
 
 const app = express();
+
+// 将 app.listen 包装成 http.createServer
+const http = require('http');
+const server = http.createServer(app);
+
+// 初始化 Socket.IO
+notificationService.init(server);
 
 const PORT = process.env.PORT || 8080;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/repair_demo';
@@ -40,7 +48,7 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 connectDB(MONGO_URI).then(() => {
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`[API] Listening on port ${PORT}`);
   });
 }).catch(err => {

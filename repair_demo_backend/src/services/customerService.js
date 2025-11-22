@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const notificationService = require('./notificationService');
 
 const statusMap = {
   pending: '待接单',
@@ -53,6 +54,17 @@ exports.create = async ({
     status: 'pending',
     history: [{ time, note: '客户发起报修' }],
   });
+
+  // 向所有在线管理员发送新订单通知
+  notificationService.broadcast('new_order', {
+    orderId: doc._id,
+    device: doc.device,
+    issue: doc.issue,
+    customer: doc.customer,
+    time: doc.time,
+    status: doc.status
+  });
+
   const o = doc.toObject();
   o.statusText = statusMap[o.status] || o.status;
   return o;

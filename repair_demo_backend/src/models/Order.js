@@ -14,6 +14,20 @@ const checkinSchema = new mongoose.Schema({
   technicianName: { type: String, required: true },
 }, { _id: false });
 
+// 签到媒资（图片/视频）的子结构
+const checkinMediaItemSchema = new mongoose.Schema({
+  url:  { type: String, required: true },                // 访问 URL
+  type: { type: String, enum: ['image', 'video'], default: 'image' }, // 媒体类型
+}, { _id: false });
+
+const checkinMediaSchema = new mongoose.Schema({
+  front:   { type: [checkinMediaItemSchema], default: [] }, // 设备正面
+  circuit: { type: [checkinMediaItemSchema], default: [] }, // 电路图
+  qrcode:  { type: [checkinMediaItemSchema], default: [] }, // 二维码
+  site:    { type: [checkinMediaItemSchema], default: [] }, // 维修点图片
+  finish:  { type: [checkinMediaItemSchema], default: [] }, // 维修完成图片
+}, { _id: false });
+
 const reviewSchema = new mongoose.Schema({
   time: { type: String, required: true },
   customerId: { type: String, required: true },
@@ -45,6 +59,7 @@ const orderSchema = new mongoose.Schema({
   checkins: { type: [checkinSchema], default: [] },
   reviews: { type: [reviewSchema], default: [] },
   checkinImages: { type: [String], default: [] },
+  checkinMedia:  { type: checkinMediaSchema, default: () => ({}) }, // 新版按类别存
   // 指派-接受-拒绝的审计痕迹
   offerFlow: {
     offeredAt:   { type: String, default: '' },  // 管理员指派时间

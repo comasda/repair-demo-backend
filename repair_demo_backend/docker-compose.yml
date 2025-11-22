@@ -24,6 +24,11 @@ services:
       - MONGO_URI=mongodb://mongo:27017/repair_demo
       - CORS_ORIGINS=*
       - TZ=Asia/Shanghai
+      - CHECKIN_FRONT_MAX:=3
+      - CHECKIN_CIRCUIT_MAX=3
+      - CHECKIN_QRCODE_MAX=3
+      - CHECKIN_SITE_MAX=3
+      - CHECKIN_FINISH_MAX=3
     ports:
       - "8080:8080"
     depends_on:

@@ -16,15 +16,27 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-  const allow = ['image/jpeg', 'image/png', 'image/webp'];
+  // 允许的图片 / 视频类型
+  const allow = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'video/mp4',
+    'video/quicktime',      // mov
+    'video/x-msvideo',      // avi
+    'video/x-matroska',     // mkv
+  ];
+
   if (!allow.includes(file.mimetype)) {
-    return cb(new Error('仅支持 jpg/png/webp'));
+    return cb(new Error('仅支持 jpg/png/webp 及常见视频格式'));
   }
+
   cb(null, true);
 };
 
 exports.uploader = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  // 单文件大小限制：这里放大到 50MB，避免短视频被拒绝
+  limits: { fileSize: 100 * 1024 * 1024 }
 });

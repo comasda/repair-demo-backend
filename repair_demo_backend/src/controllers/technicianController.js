@@ -63,17 +63,20 @@ exports.declineOffer = async (req,res,next)=>{
   } catch(e){ next(e); }
 };
 
-exports.requestComplete = async (req,res,next)=>{
+exports.requestComplete = async (req, res, next) => {
   try {
-   const checkinImages = req.body?.checkinImages || [];
-   const ok = await technicianService.requestComplete(
-     req.params.id,
-     req.user.sub,
-     checkinImages
-   );
-    if (!ok) return res.status(400).json({ message:'无法提交完成' });
-    res.json({ ok:true });
-  } catch(e){ next(e); }
+    const { checkinImages = [], checkinMedia = {} } = req.body || {};
+
+    const result = await technicianService.requestComplete(req.params.id, {
+      technicianId: req.user.sub,
+      checkinImages,
+      checkinMedia,
+    });
+
+    res.json({ ok: true, data: result });
+  } catch (e) {
+    next(e);
+  }
 };
 
 

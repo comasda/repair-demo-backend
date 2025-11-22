@@ -20,6 +20,24 @@ const fmt = (d = new Date()) => {
   )}`;
 };
 
+const CHECKIN_MEDIA_CATEGORIES = ['front', 'circuit', 'qrcode', 'site', 'finish'];
+
+// ★ 每个类别的数量限制（可自定义）
+const CHECKIN_MEDIA_LIMIT = {
+  front:   { min: 1, max: Number(process.env.CHECKIN_FRONT_MAX   || 1) },
+  circuit: { min: 1, max: Number(process.env.CHECKIN_CIRCUIT_MAX || 1) },
+  qrcode:  { min: 1, max: Number(process.env.CHECKIN_QRCODE_MAX  || 1) },
+  site:    { min: 1, max: Number(process.env.CHECKIN_SITE_MAX    || 1) },
+  finish:  { min: 1, max: Number(process.env.CHECKIN_FINISH_MAX  || 1) },
+};
+
+// 将单个对象或数组统一成数组
+function normalizeMediaValue(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  return [v];
+}
+
 function httpError(status, message) {
   const err = new Error(message);
   err.status = status;
@@ -148,7 +166,9 @@ exports.declineOffer = async (id, technicianId, note = '') => {
 };
 
 // 师傅发起完成（需 checkedIn）
-exports.requestComplete = async (id, technicianId, checkinImages = []) => {
+exports.requestComplete = async (id, payload = {}) => {
+  const { technicianId, checkinImages = [], checkinMedia = {} } = payload;
+
   if (!technicianId) throw httpError(400, '缺少参数: technicianId');
 
   const order = await Order.findById(id);
@@ -156,22 +176,56 @@ exports.requestComplete = async (id, technicianId, checkinImages = []) => {
   if (order.technicianId !== technicianId) throw httpError(403, '仅接单的师傅可发起完成');
   if (order.status !== 'checkedIn') throw httpError(400, '需到场签到后才能发起完成');
 
-  // ★ 必须上传 5 张签到照片（防止前端绕过）
-  if (!Array.isArray(checkinImages) || checkinImages.length < 5) {
-    throw httpError(400, '请上传 5 张签到照片');
+  // ★ 1）按类别校验 & 归一化
+  const normalized = {};
+  CHECKIN_MEDIA_CATEGORIES.forEach((cat) => {
+    const limit = CHECKIN_MEDIA_LIMIT[cat] || { min: 0, max: 10 };
+    const raw = normalizeMediaValue(checkinMedia[cat]);
+
+    const count = raw.length;
+    if (count < limit.min) {
+      throw httpError(400, `请至少上传 ${limit.min} 个「${cat}」媒资`);
+    }
+    if (count > limit.max) {
+      throw httpError(400, `「${cat}」媒资最多只能上传 ${limit.max} 个`);
+    }
+
+    normalized[cat] = raw.map((item) => {
+      // 支持两种格式：{url,type} 或 直接是字符串 url
+      if (typeof item === 'string') {
+        return { url: item, type: 'image' };
+      }
+      return {
+        url: item.url,
+        type: item.type === 'video' ? 'video' : 'image',
+      };
+    });
+  });
+
+  // ★ 2）保存到订单
+  order.checkinMedia = normalized;
+
+  // 为了兼容管理端已有的预览逻辑，保留一维数组（按前端顺序）
+  if (Array.isArray(checkinImages) && checkinImages.length) {
+    order.checkinImages = checkinImages;
   }
 
+  // ★ 3）更新状态 & 完成流程
   const time = fmt(new Date());
   order.status = 'awaitingConfirm';
-  order.checkinImages = checkinImages;
   order.completeFlow = Object.assign({}, order.completeFlow, {
     requestAt: time,
     requestedBy: technicianId,
   });
+
   order.history = order.history || [];
   order.history.push({ time, note: '师傅发起完成，等待平台审核' });
+
   await order.save();
-  return { message: '已发起完成申请，等待平台审核', status: order.status };
+  return {
+    message: '已发起完成申请，等待平台审核',
+    status: order.status,
+  };
 };
 
 // 查看评价

@@ -64,26 +64,15 @@ exports.listForTechnician = async (technicianId, status) => {
 };
 
 // 师傅 签到
-exports.checkin = async (id, { lat, lng, technicianId, technicianName }) => {
-  if (lat == null || lng == null || !technicianId || !technicianName) {
+exports.checkin = async (id, { lat = null, lng = null, technicianId, technicianName }) => {
+  if (!technicianId || !technicianName) {
     throw httpError(400, '缺少必要参数');
   }
   const order = await Order.findById(id);
   if (!order) throw httpError(404, '订单不存在');
 
-  // 兼容两种坐标存法
-  const oLat = order.location?.lat ?? order.lat;
-  const oLng = order.location?.lng ?? order.lng;
-  if (oLat == null || oLng == null) {
-    throw httpError(400, '工单未配置坐标，无法签到');
-  }
-
-  const dist = Math.round(haversine(lat, lng, oLat, oLng));
-  if (dist > CHECKIN_RADIUS_M) {
-    throw httpError(400, `距工单位置约${dist}米，需在${CHECKIN_RADIUS_M}米内签到`);
-  }
-
   const willSetStatus = order.status !== 'done' ? { status: 'checkedIn' } : {};
+
   const time = fmt(new Date());
 
   const updated = await Order.findByIdAndUpdate(

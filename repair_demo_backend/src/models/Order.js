@@ -7,8 +7,8 @@ const historySchema = new mongoose.Schema({
 
 const checkinSchema = new mongoose.Schema({
   time:   { type: String, required: true },       // 前端传格式化时间，或后端生成
-  lat:    { type: Number, required: true },
-  lng:    { type: Number, required: true },
+  lat:    { type: Number },
+  lng:    { type: Number },
   address:{ type: String, default: '' },          // 可选，前端 chooseLocation 的地址
   technicianId:   { type: String, required: true },
   technicianName: { type: String, required: true },
@@ -41,8 +41,8 @@ const orderSchema = new mongoose.Schema({
   id: { type: String }, // 工单编号
   customer: { type: String, required: true },       // 客户名（或手机号）
   customerId: { type: String, required: true },     // 客户 ID（来自用户表）
-  device: { type: String, required: true },         // 设备名称
-  issue: { type: String, required: true },          // 故障描述
+  device: { type: String, default: '' },         // 设备名称
+  issue: { type: String, default: '' },          // 故障描述
   phone: { type: String },                          // 联系电话
   address: { type: String },                        // 地址
   images: { type: [String], default: [] },          // 图片 URL 列表

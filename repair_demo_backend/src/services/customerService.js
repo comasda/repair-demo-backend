@@ -36,15 +36,15 @@ exports.create = async ({
   location,
   locationAddress,
 }) => {
-  if (!customer || !customerId || !device || !issue) {
-    throw httpError(400, '缺少必要字段: customer, customerId, device, issue');
+  if (!customer || !customerId) {
+    throw httpError(400, '缺少必要字段: customer, customerId');
   }
   const time = fmt(new Date());
   const doc = await Order.create({
     customer,
     customerId,
-    device,
-    issue,
+    device: device || '',
+    issue: issue || '',
     phone,
     address,
     images: images || [],
